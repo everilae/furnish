@@ -8,25 +8,28 @@ from typing import TypeVar, Generic, Callable, Optional, Type
 Response = TypeVar("Response")
 
 
-class _Signature(inspect.Signature):
+def _get_annotated(type_, signature, bound):
+    v = {}
+    for name, value in bound.arguments.items():
+        annotation = signature.parameters[name].annotation
+        if isinstance(annotation, type_):
+            v[annotation.name or name] = value
 
-    def _get_annotated(self, type_, arguments):
-        v = {}
-        for name, value in arguments.items():
-            annotation = self.parameters[name].annotation
-            if isinstance(annotation, type_):
-                v[annotation.name or name] = value
+    return v
 
-        return v
 
-    def path_vars(self, arguments):
-        return self._get_annotated(Path, arguments)
+def _path_vars(signature, bound):
+    return _get_annotated(Path, signature, bound)
 
-    def query_params(self, arguments):
-        return self._get_annotated(Query, arguments)
 
-    def body(self, arguments):
-        return None
+def _query_params(signature, bound):
+    return _get_annotated(Query, signature, bound)
+
+
+def _body(signature, bound):
+    return None
+
+_default_client = requests.request
 
 
 class BaseClient:
@@ -34,12 +37,14 @@ class BaseClient:
     Base client class.
     """
 
-    _client = None
+    def __init__(self, baseUrl, client=_default_client):
+        self.baseUrl = baseUrl
+        self.client = client
 
     def _call(self,
               method: str,
               template: str,
-              signature: _Signature,
+              signature: inspect.Signature,
               *args, **kwgs) -> Response:
         """
         Send an HTTP request using `_client`.
@@ -47,39 +52,40 @@ class BaseClient:
         bound = signature.bind(*args, **kwgs)
         bound.apply_defaults()
 
-        url = template.format(**signature.path_vars(bound.arguments))
+        url = self.baseUrl + template.format(**_path_vars(signature, bound))
         kwgs = {}
 
-        query_params = signature.query_params(bound.arguments)
+        query_params = _query_params(signature, bound)
         if query_params:
             kwgs["params"] = query_params
 
-        body = signature.body(bound.arguments)
+        body = _body(signature, bound)
         if body:
             kwgs["data"] = body
 
-        self._client(method, url, **kwgs)
+        return self.client(method, url, **kwgs)
 
 
 def _isfurnished(member):
     return inspect.isfunction(member) and hasattr(member, "_furnish")
 
 
-def furnish(cls: Optional[Type]=None, *, client=requests.request) -> Type[BaseClient]:
+def furnish(cls: Optional[Type]=None, *,
+            base_class: Type[BaseClient]=BaseClient) -> Type[BaseClient]:
     """
     Create HTTP API client from class definition.
     """
     if cls is None:
-        return partial(furnish, client=client)
+        return partial(furnish, base_class=base_class)
 
-    namespace = dict(_client=client)
+    namespace = {}
     for name, member in inspect.getmembers(cls, _isfurnished):
         method, template = member._furnish
-        signature = _Signature.from_callable(member)
+        signature = inspect.signature(member)
         namespace[name] = partialmethod(
             BaseClient._call, method, template, signature)
 
-    return type(cls.__name__, (BaseClient,), namespace)
+    return type(cls.__name__, (base_class,), namespace)
 
 
 def url(method: str, template: str) -> Callable[[Callable], Callable]:

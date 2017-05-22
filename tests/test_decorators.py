@@ -28,11 +28,12 @@ class TestDecorators:
     def test_custom_client(self):
         client = object()
 
-        @furnish(client=client)
+        @furnish()
         class Api:
             pass
 
-        assert Api._client is client,\
+        api = Api("", client=client)
+        assert api.client is client,\
             "'furnish' allows passing custom client"
 
     def test_url(self):
