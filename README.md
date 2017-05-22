@@ -25,3 +25,6 @@ api.item(1)
 # Search
 api.search("my query string")
 ```
+
+## TODO
+- Serialize / deserialize according to annotations
