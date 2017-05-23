@@ -54,7 +54,11 @@ def _body(signature, bound):
 
 
 def _response_class(signature):
-    return signature.return_annotation
+    cls = signature.return_annotation
+    if cls is inspect.Signature.empty:
+        return None
+
+    return cls
 
 _default_client = requests.request
 
@@ -64,9 +68,13 @@ class BaseClient:
     Base client class.
     """
 
-    def __init__(self, base_url, client=_default_client):
+    def __init__(self,
+                 base_url: str,
+                 client=_default_client,
+                 response_class: Type[Response]=Response):
         self.base_url = base_url
         self.client = client
+        self.response_class = response_class
 
     def _call(self,
               method: str,
@@ -92,7 +100,7 @@ class BaseClient:
 
         response = self.client(method, url, **kwgs)
 
-        response_class = _response_class(signature)
+        response_class = _response_class(signature) or self.response_class
         body_class, = response_class.__args__ or (None,)
         return response_class(response, body_class)
 

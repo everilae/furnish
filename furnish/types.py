@@ -72,8 +72,11 @@ class Response(Generic[T]):
 
     def body(self) -> T:
         """
-        Returns the body deserialized as `T`.
+        Returns the body deserialized from JSON as `T`.
         """
+        if self.body_class is None:
+            raise FurnishError("missing type information")
+
         if not self._entity:
             body_json = self.response.json()
             self._entity = _deserialize(self.body_class, body_json)
