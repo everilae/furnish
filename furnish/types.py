@@ -1,5 +1,5 @@
 import requests
-from typing import Optional, Type, Union, TypeVar, Generic
+from typing import Optional, Type, Union, TypeVar, Generic, List
 
 
 class Parameter:
@@ -29,6 +29,23 @@ class Body(Parameter):
     Request body.
     """
 
+JSON = Union[dict, list]
+
+
+def _deserialize(cls: Type, json_: JSON):
+    """
+    Simple JSON deserializer.
+    """
+    if issubclass(cls, List):
+        item_cls, = cls.__args__
+        obj = [_deserialize(item_cls, x) for x in json_]
+
+    else:
+        obj = cls.__new__(cls)
+        obj.__dict__.update(json_)
+
+    return obj
+
 T = TypeVar("T")
 
 
@@ -44,9 +61,9 @@ class Response(Generic[T]):
                  body_class: Type[T]):
         self.response = response
         self.body_class = body_class
-        self._obj = None
+        self._entity = None
 
-    def json(self, **kwgs) -> Union[dict, list]:
+    def json(self, **kwgs) -> JSON:
         """
         Returns the body if any, decoded from JSON.
         """
@@ -56,9 +73,8 @@ class Response(Generic[T]):
         """
         Returns the body deserialized as `T`.
         """
-        if not self._obj:
+        if not self._entity:
             body_json = self.response.json()
-            self._obj = self.body_class.__new__(self.body_class)
-            self._obj.__dict__.update(body_json)
+            self._entity = _deserialize(self.body_class, body_json)
 
-        return self._obj
+        return self._entity
