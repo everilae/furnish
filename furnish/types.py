@@ -36,12 +36,13 @@ def _deserialize(cls: Type, json_: JSON):
     """
     Simple JSON deserializer.
     """
-    if issubclass(cls, List):
+    if issubclass(cls, list):
         item_cls, = cls.__args__
         obj = [_deserialize(item_cls, x) for x in json_]
 
     else:
         obj = cls.__new__(cls)
+        # TODO: Deserialize attributes
         obj.__dict__.update(json_)
 
     return obj
@@ -58,7 +59,7 @@ class Response(Generic[T]):
 
     def __init__(self,
                  response: requests.Response,
-                 body_class: Type[T]):
+                 body_class: Type):
         self.response = response
         self.body_class = body_class
         self._entity = None

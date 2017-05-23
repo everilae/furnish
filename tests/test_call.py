@@ -14,16 +14,16 @@ class Item:
 class Api:
 
     @get("/")
-    def all() -> List[Item]: pass
+    def all() -> Response[List[Item]]: pass
 
     @get("/{id}")
-    def item(id: Path(int)) -> Item: pass
+    def item(id: Path(int)) -> Response[Item]: pass
 
     @post("/")
-    def create_item(item: Body(dict)) -> None: pass
+    def create_item(item: Body(dict)) -> Response: pass
 
     @get("/search")
-    def search(q: Query(str)) -> List[Item]: pass
+    def search(q: Query(str)) -> Response[List[Item]]: pass
 
 
 @pytest.fixture(scope="function")

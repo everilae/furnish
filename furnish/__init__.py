@@ -53,7 +53,7 @@ def _body(signature, bound):
     return body
 
 
-def _body_class(signature):
+def _response_class(signature):
     return signature.return_annotation
 
 _default_client = requests.request
@@ -90,10 +90,11 @@ class BaseClient:
         if body:
             kwgs["data"] = body
 
-        body_class = _body_class(signature)
-
         response = self.client(method, url, **kwgs)
-        return Response(response, body_class)
+
+        response_class = _response_class(signature)
+        body_class, = response_class.__args__ or (None,)
+        return response_class(response, body_class)
 
 
 def _isfurnished(member):
