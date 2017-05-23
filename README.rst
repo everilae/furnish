@@ -49,10 +49,38 @@ Create HTTP API clients from Python. Inspired by Retrofit_.
      'userId': 1,
      'body': 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'}
 
+Supports simple deserialization of response bodies to Python objects:
+
+.. code:: python
+
+    >>> import furnish
+
+    >>> class Post:
+    ...     def __item__(self, *, id, title, body, userId):
+    ...         self.id = id
+    ...         self.title = title
+    ...         self.body = body
+    ...         self.userId = userId
+    ... 
+
+    >>> @furnish.furnish
+    ... class FakeService:
+    ...     @furnish.get("/posts/{id}")
+    ...     def get_post(id: furnish.Path(int)) -> furnish.Response[Post]: pass
+    ... 
+
+    >>> service = FakeService("https://jsonplaceholder.typicode.com")
+
+    >>> service.get_post(1).body()
+    <__main__.Post object at 0x7f01ef00b208>
+
+    >>> _.title
+    'sunt aut facere repellat provident occaecati excepturi optio reprehenderit'
+
 TODO
 ----
 
--  Serialize / deserialize according to annotations
+-  Serialize according to annotations
 
 License
 -------
