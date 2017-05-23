@@ -53,3 +53,8 @@ TODO
 ----
 
 -  Serialize / deserialize according to annotations
+
+License
+-------
+
+This package is licensed under the OSI MIT License.
