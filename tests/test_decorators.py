@@ -27,17 +27,6 @@ class TestDecorators:
         assert hasattr(Api, 'method1') and hasattr(Api, 'method1'),\
             "'furnish' creates methods"
 
-    def test_custom_client(self):
-        client = object()
-
-        @furnish()
-        class Api:
-            pass
-
-        api = Api("", client=client)
-        assert api.client is client,\
-            "'furnish' allows passing custom client"
-
     def test_url(self):
         @url("get", "/items/{id}")
         def fun():

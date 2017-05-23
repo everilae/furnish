@@ -64,8 +64,8 @@ class BaseClient:
     Base client class.
     """
 
-    def __init__(self, baseUrl, client=_default_client):
-        self.baseUrl = baseUrl
+    def __init__(self, base_url, client=_default_client):
+        self.base_url = base_url
         self.client = client
 
     def _call(self,
@@ -79,7 +79,7 @@ class BaseClient:
         bound = signature.bind(*args, **kwgs)
         bound.apply_defaults()
 
-        url = self.baseUrl + template.format_map(_path(signature, bound))
+        url = self.base_url + template.format_map(_path(signature, bound))
         kwgs = {}
 
         query = _query(signature, bound)
