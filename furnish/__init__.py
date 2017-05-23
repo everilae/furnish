@@ -1,15 +1,11 @@
 import inspect
 import requests
-from functools import partial, partialmethod, update_wrapper
-from collections import namedtuple
-from copy import copy
-from typing import TypeVar, Generic, Callable, Optional, Type
+from functools import partial, partialmethod
+from typing import Callable, Optional, Type
 
 from .exc import FurnishError
-from .types import Path, Query, Body
+from .types import Path, Query, Body, Response
 from .utils import LockPick as _LockPick
-
-Response = TypeVar("Response")
 
 
 def _get_parameters(type_, signature):
@@ -56,6 +52,10 @@ def _body(signature, bound):
     body, = args.values()
     return body
 
+
+def _body_class(signature):
+    return signature.return_annotation
+
 _default_client = requests.request
 
 
@@ -90,7 +90,10 @@ class BaseClient:
         if body:
             kwgs["data"] = body
 
-        return self.client(method, url, **kwgs)
+        body_class = _body_class(signature)
+
+        response = self.client(method, url, **kwgs)
+        return Response(response, body_class)
 
 
 def _isfurnished(member):
