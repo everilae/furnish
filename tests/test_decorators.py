@@ -49,8 +49,16 @@ class TestDecorators:
 
     def test_validation(self):
         with pytest.raises(FurnishError,
-                           message="Multiple Body parameters raises error"):
+                           message="Multiple Body parameters raise error"):
             @furnish.furnish
             class Api:
                 @post("")
                 def create(body1: Body(dict), body2: Body(dict)): pass
+
+        with pytest.raises(FurnishError,
+                           message="Missing Path parameters raise error"):
+            @furnish.furnish
+            class Api:
+                @get("/{network}/item/{id}/")
+                def get():
+                    pass
