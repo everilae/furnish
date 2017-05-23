@@ -111,7 +111,7 @@ def furnish(cls: Optional[Type]=None, *,
         signature = inspect.signature(member)
         _check_signature(signature, template)
         namespace[name] = partialmethod(
-            BaseClient._call, method, template, signature)
+            base_class._call, method, template, signature)
 
     return type(cls.__name__, (base_class,), namespace)
 
