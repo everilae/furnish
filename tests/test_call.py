@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from furnish import furnish, get, Path, Query
+from furnish import furnish, get, post, Path, Query, Body
 
 
 class Api:
@@ -10,6 +10,9 @@ class Api:
 
     @get("/{id}")
     def item(id: Path(int)): pass
+
+    @post("/")
+    def create_item(item: Body(dict)): pass
 
     @get("/search")
     def search(q: Query(str)): pass
@@ -35,6 +38,10 @@ class TestCall:
 
         api.item(1)
         client.assert_called_with("get", "http://example.org/1")
+
+        api.create_item({ "name": "Test" })
+        client.assert_called_with("post", "http://example.org/",
+                                  data={ "name": "Test" })
 
         ret = api.search("foo")
         client.assert_called_with("get", "http://example.org/search",

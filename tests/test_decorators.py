@@ -1,4 +1,6 @@
-from furnish import furnish, url, get, BaseClient
+import pytest
+from furnish import furnish, url, get, post, BaseClient, Body
+from furnish.exc import FurnishError
 
 
 class TestDecorators:
@@ -43,3 +45,11 @@ class TestDecorators:
 
         assert hasattr(fun, "_furnish"),\
             "'url' decorator sets '_furnish' attribute"
+
+    def test_validation(self):
+        with pytest.raises(FurnishError,
+                           message="Multiple Body parameters raises error"):
+            @furnish
+            class Api:
+                @post("")
+                def create(body1: Body(dict), body2: Body(dict)): pass
