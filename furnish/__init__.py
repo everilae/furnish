@@ -18,6 +18,23 @@ def _get_annotated(type_, signature, bound):
     return v
 
 
+def _check_signature(signature, template):
+    """
+    Check that the given `Signature` is valid.
+
+    TODO: Check that required template args are present.
+    """
+    has_body = False
+    for name, parameter in signature.parameters.items():
+        annotation = parameter.annotation
+        if isinstance(annotation, Body):
+            if not has_body:
+                has_body = True
+
+            else:
+                raise FurnishError("multiple parameters annotated as Body")
+
+
 def _path_vars(signature, bound):
     return _get_annotated(Path, signature, bound)
 
@@ -27,7 +44,13 @@ def _query_params(signature, bound):
 
 
 def _body(signature, bound):
-    return None
+    args = _get_annotated(Body, signature, bound)
+
+    if not args:
+        return
+
+    body, = args.values()
+    return body
 
 _default_client = requests.request
 
@@ -82,6 +105,7 @@ def furnish(cls: Optional[Type]=None, *,
     for name, member in inspect.getmembers(cls, _isfurnished):
         method, template = member._furnish
         signature = inspect.signature(member)
+        _check_signature(signature, template)
         namespace[name] = partialmethod(
             BaseClient._call, method, template, signature)
 
@@ -125,4 +149,10 @@ class Path(Parameter):
 class Query(Parameter):
     """
     Query parameter.
+    """
+
+
+class Body(Parameter):
+    """
+    Request body.
     """
