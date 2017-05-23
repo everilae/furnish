@@ -8,7 +8,7 @@ Create HTTP API clients from Python.
 ... class FakeService:
 ... 
 ...     @furnish.get("/posts")
-...     def all_posts(user_id: furnish.Query(int, "userId")=None): pass
+...     def all_posts(user_id: furnish.Query(Optional[int], "userId")=None): pass
 ... 
 ...     @furnish.post("/posts")
 ...     def create_post(post: furnish.Body(dict)): pass
@@ -30,13 +30,16 @@ Create HTTP API clients from Python.
 ...     @furnish.get("/comments")
 ...     def comments(post_id: furnish.Query(int, "postId")): pass
 ...
+
 >>> service = FakeService("https://jsonplaceholder.typicode.com")
+
 >>> service.all_posts(user_id=2).json()
 [{'userId': 2,
   'body': 'delectus reiciendis molestiae occaecati non minima eveniet qui voluptatibus\naccusamus in eum beatae sit\nvel qui neque voluptates ut commodi qui incidunt\nut animi commodi',
   'title': 'et ea vero quia laudantium autem',
   'id': 11},
   ...
+
 >>> service.update_post(1, { 'title': 'New title' }).json()
 {'title': 'New title',
  'id': 1,
