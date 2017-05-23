@@ -5,46 +5,50 @@ from collections import namedtuple
 from copy import copy
 from typing import TypeVar, Generic, Callable, Optional, Type
 
+from .exc import FurnishError
+from .types import Path, Query, Body
+from .utils import LockPick as _LockPick
+
 Response = TypeVar("Response")
 
 
-def _get_annotated(type_, signature, bound):
-    v = {}
-    for name, value in bound.arguments.items():
-        annotation = signature.parameters[name].annotation
-        if isinstance(annotation, type_):
-            v[annotation.name or name] = value
-
-    return v
+def _get_parameters(type_, signature):
+    return ((name, parameter)
+            for name, parameter in signature.parameters.items()
+            if isinstance(parameter.annotation, type_))
 
 
 def _check_signature(signature, template):
     """
     Check that the given `Signature` is valid.
-
-    TODO: Check that required template args are present.
     """
-    has_body = False
-    for name, parameter in signature.parameters.items():
-        annotation = parameter.annotation
-        if isinstance(annotation, Body):
-            if not has_body:
-                has_body = True
+    pick = _LockPick()
+    template.format_map(pick)
+    path_vars = {name for name, _ in _get_parameters(Path, signature)}
+    path_vars_diff = pick.keys - path_vars
 
-            else:
-                raise FurnishError("multiple parameters annotated as Body")
+    if path_vars_diff:
+        raise FurnishError(
+            "missing Path parameters: {}".format(path_vars_diff))
 
-
-def _path_vars(signature, bound):
-    return _get_annotated(Path, signature, bound)
+    if len(list(_get_parameters(Body, signature))) > 1:
+        raise FurnishError("multiple parameters annotated as Body")
 
 
-def _query_params(signature, bound):
-    return _get_annotated(Query, signature, bound)
+def _get_args(type_, signature, bound):
+    v = {}
+    for name, parameter in _get_parameters(type_, signature):
+        value = bound.arguments[name]
+        v[parameter.annotation.name or name] = value
+
+    return v
+
+_path = partial(_get_args, Path)
+_query = partial(_get_args, Query)
 
 
 def _body(signature, bound):
-    args = _get_annotated(Body, signature, bound)
+    args = _get_args(Body, signature, bound)
 
     if not args:
         return
@@ -75,12 +79,12 @@ class BaseClient:
         bound = signature.bind(*args, **kwgs)
         bound.apply_defaults()
 
-        url = self.baseUrl + template.format(**_path_vars(signature, bound))
+        url = self.baseUrl + template.format_map(_path(signature, bound))
         kwgs = {}
 
-        query_params = _query_params(signature, bound)
-        if query_params:
-            kwgs["params"] = query_params
+        query = _query(signature, bound)
+        if query:
+            kwgs["params"] = query
 
         body = _body(signature, bound)
         if body:
@@ -128,31 +132,3 @@ put = partial(url, "put")
 patch = partial(url, "patch")
 delete = partial(url, "delete")
 head = partial(url, "head")
-
-
-class Parameter:
-    """
-    Parameter annotation.
-    """
-
-    def __init__(self, type_: Type, name: Optional[str]=None) -> None:
-        self.type_ = type_
-        self.name = name
-
-
-class Path(Parameter):
-    """
-    Path parameter.
-    """
-
-
-class Query(Parameter):
-    """
-    Query parameter.
-    """
-
-
-class Body(Parameter):
-    """
-    Request body.
-    """
