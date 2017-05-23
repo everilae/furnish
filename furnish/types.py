@@ -30,9 +30,10 @@ class Body(Parameter):
     """
 
 JSON = Union[dict, list]
+T = TypeVar("T")
 
 
-def _deserialize(cls: Type, json_: JSON):
+def _deserialize(cls: Type[T], json_: JSON) -> T:
     """
     Simple JSON deserializer.
     """
@@ -47,8 +48,6 @@ def _deserialize(cls: Type, json_: JSON):
 
     return obj
 
-T = TypeVar("T")
-
 
 # TODO: This adapts requests.Response objects, there should exist
 # a generic base response that other adapters implement.
@@ -59,7 +58,7 @@ class Response(Generic[T]):
 
     def __init__(self,
                  response: requests.Response,
-                 body_class: Type):
+                 body_class: Type[T]):
         self.response = response
         self.body_class = body_class
         self._entity = None
