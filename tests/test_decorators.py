@@ -1,12 +1,14 @@
 import pytest
-from furnish import furnish, url, get, post, BaseClient, Body
+import furnish
+from furnish import url, get, post, BaseClient, Body
+
 from furnish.exc import FurnishError
 
 
 class TestDecorators:
 
     def test_simple_definition(self):
-        @furnish
+        @furnish.furnish
         class Api:
             pass
 
@@ -14,7 +16,7 @@ class TestDecorators:
             "'furnish' produces 'furnish.BaseClient' subclasses"
 
     def test_attributes(self):
-        @furnish
+        @furnish.furnish
         class Api:
             @get("")
             def method1():
@@ -35,10 +37,20 @@ class TestDecorators:
         assert hasattr(fun, "_furnish"),\
             "'url' decorator sets '_furnish' attribute"
 
+    def test_http_methods(self):
+        methods = ["get", "post", "put", "patch", "delete", "head"]
+        for method in methods:
+            deco = getattr(furnish, method)
+            @deco("/")
+            def f():
+                pass
+
+            assert f._furnish == (method, "/")
+
     def test_validation(self):
         with pytest.raises(FurnishError,
                            message="Multiple Body parameters raises error"):
-            @furnish
+            @furnish.furnish
             class Api:
                 @post("")
                 def create(body1: Body(dict), body2: Body(dict)): pass

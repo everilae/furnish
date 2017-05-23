@@ -25,7 +25,7 @@ def client():
 
 @pytest.fixture
 def api_class():
-    return furnish()(Api)
+    return furnish(Api)
 
 
 class TestCall:
