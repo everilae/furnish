@@ -1,7 +1,7 @@
 furnish
 =======
 
-Create HTTP API clients from Python.
+Create HTTP API clients from Python. Inspired by Retrofit_.
 
 .. code:: python
 
@@ -58,3 +58,5 @@ License
 -------
 
 This package is licensed under the OSI MIT License.
+
+.. _Retrofit: http://square.github.io/retrofit/
