@@ -2,7 +2,6 @@ from typing import Optional
 import furnish
 
 
-@furnish.furnish
 class FakeService:
 
     @furnish.get("/posts")
