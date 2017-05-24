@@ -1,7 +1,8 @@
 import inspect
 import requests
 from functools import partial, partialmethod
-from typing import Callable, Optional, Type
+from collections import namedtuple
+from typing import Callable, Optional, Type, Mapping
 
 from .exc import FurnishError
 from .types import Path, Query, Body, Response
@@ -53,7 +54,7 @@ def _body(signature, bound):
     return body
 
 
-def _response_class(signature):
+def _response_cls(signature):
     cls = signature.return_annotation
     if cls is inspect.Signature.empty:
         return None
@@ -71,15 +72,16 @@ class BaseClient:
     def __init__(self,
                  base_url: str,
                  client=_default_client,
-                 response_class: Type[Response]=Response):
+                 response_cls: Type[Response]=Response):
         self.base_url = base_url
         self.client = client
-        self.response_class = response_class
+        self.response_cls = response_cls
 
     def _call(self,
+              signature: inspect.Signature,
               method: str,
               template: str,
-              signature: inspect.Signature,
+              headers: Optional[Mapping[str, str]],
               *args, **kwgs) -> Response:
         """
         Send an HTTP request using `_client`.
@@ -98,11 +100,14 @@ class BaseClient:
         if body:
             kwgs["data"] = body
 
+        if headers:
+            kwgs["headers"] = headers
+
         response = self.client(method, url, **kwgs)
 
-        response_class = _response_class(signature) or self.response_class
-        body_class, = response_class.__args__ or (None,)
-        return response_class(response, body_class)
+        response_cls = _response_cls(signature) or self.response_cls
+        body_cls, = response_cls.__args__ or (None,)
+        return response_cls(response, body_cls)
 
 
 def _isfurnished(member):
@@ -110,30 +115,53 @@ def _isfurnished(member):
 
 
 def furnish(cls: Optional[Type]=None, *,
-            base_class: Type[BaseClient]=BaseClient) -> Type[BaseClient]:
+            base_cls: Type[BaseClient]=BaseClient) -> Type[BaseClient]:
     """
     Create HTTP API client from class definition.
     """
     if cls is None:
-        return partial(furnish, base_class=base_class)
+        return partial(furnish, base_cls=base_cls)
 
     namespace = {}
     for name, member in inspect.getmembers(cls, _isfurnished):
-        method, template = member._furnish
+        method, template, headers = member._furnish
+
+        if method is None:
+            raise FurnishError(
+                "method not defined – possibly missing url decorator?")
+
+        if template is None:
+            raise FurnishError(
+                "template not defined – possibly missing url decorator?")
+
         signature = inspect.signature(member)
         _check_signature(signature, template)
+
         namespace[name] = partialmethod(
-            base_class._call, method, template, signature)
+            base_cls._call, signature, method, template, headers)
 
-    return type(cls.__name__, (base_class,), namespace)
+    return type(cls.__name__, (base_cls,), namespace)
 
 
-def url(method: str, template: str) -> Callable[[Callable], Callable]:
+_Marker = namedtuple("Marker", "method template headers")
+
+Decorator = Callable[[Callable], Callable]
+
+
+def _mark(f, **kwgs):
+    try:
+        f._furnish = f._furnish._replace(**kwgs)
+
+    except AttributeError:
+        f._furnish = _Marker(*map(kwgs.get, _Marker._fields))
+
+
+def url(method: str, template: str) -> Decorator:
     """
     Define URL template.
     """
     def decorator(f: Callable) -> Callable:
-        f._furnish = (method, template)
+        _mark(f, method=method, template=template)
         return f
 
     return decorator
@@ -144,3 +172,14 @@ put = partial(url, "put")
 patch = partial(url, "patch")
 delete = partial(url, "delete")
 head = partial(url, "head")
+
+
+def headers(headers_map: Mapping[str, str]) -> Decorator:
+    """
+    Define request headers.
+    """
+    def decorator(f: Callable) -> Callable:
+        _mark(f, headers=headers_map)
+        return f
+
+    return decorator

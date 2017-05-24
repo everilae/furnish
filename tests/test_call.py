@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from furnish import furnish, get, post, Path, Query, Body, Response
+from furnish import furnish, get, post, headers, Path, Query, Body, Response
 from typing import List
 
 
@@ -11,34 +11,45 @@ class Item:
         self.bar = bar
 
 
-class Api:
-
-    @get("/")
-    def all() -> Response[List[Item]]: pass
-
-    @get("/{id}")
-    def item(id: Path(int)) -> Response[Item]: pass
-
-    @post("/")
-    def create_item(item: Body(dict)) -> Response: pass
-
-    @get("/search")
-    def search(q: Query(str)) -> Response[List[Item]]: pass
-
-
 @pytest.fixture(scope="function")
 def client():
     return mock.Mock()
 
 
 @pytest.fixture
-def api_class():
-    return furnish(Api)
+def test_headers():
+    return {
+        "X-Secret": "super secret"
+    }
+
+
+@pytest.fixture
+def api_cls(test_headers):
+    @furnish
+    class Api:
+
+        @get("/")
+        def all() -> Response[List[Item]]: pass
+
+        @get("/{id}")
+        def item(id: Path(int)) -> Response[Item]: pass
+
+        @post("/")
+        def create_item(item: Body(dict)) -> Response: pass
+
+        @get("/search")
+        def search(q: Query(str)) -> Response[List[Item]]: pass
+
+        @headers(test_headers)
+        @get("/secret")
+        def secret() -> Response: pass
+
+    return Api
 
 
 @pytest.fixture(scope="function")
-def api(api_class, client):
-    return api_class("http://example.org", client=client)
+def api(api_cls, client):
+    return api_cls("http://example.org", client=client)
 
 
 class TestCall:
@@ -92,3 +103,8 @@ class TestCall:
         assert isinstance(items[1], Item)
         assert items[0].foo == 1 and items[0].bar == 2
         assert items[1].foo == 3 and items[1].bar == 4
+
+    def test_request_headers(self, api, client, test_headers):
+        api.secret()
+        client.assert_called_with("get", "http://example.org/secret",
+                                  headers=test_headers)

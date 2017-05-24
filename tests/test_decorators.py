@@ -1,8 +1,15 @@
 import pytest
 import furnish
-from furnish import url, get, post, BaseClient, Body
+from furnish import url, get, post, headers, BaseClient, Body
 
 from furnish.exc import FurnishError
+
+
+@pytest.fixture
+def test_headers():
+    return {
+        "X-Test": "test"
+    }
 
 
 class TestDecorators:
@@ -45,7 +52,8 @@ class TestDecorators:
             def f():
                 pass
 
-            assert f._furnish == (method, "/")
+            assert f._furnish.method == method
+            assert f._furnish.template == "/"
 
     def test_validation(self):
         with pytest.raises(FurnishError,
@@ -62,3 +70,22 @@ class TestDecorators:
                 @get("/{network}/item/{id}/")
                 def get():
                     pass
+
+    def test_headers(self, test_headers):
+        @headers(test_headers)
+        def fun():
+            pass
+
+        assert hasattr(fun, "_furnish")
+        assert fun._furnish.headers == test_headers
+
+    def test_url_and_headers(self, test_headers):
+        @headers(test_headers)
+        @url("get", "/")
+        def fun():
+            pass
+
+        assert hasattr(fun, "_furnish")
+        assert fun._furnish.method == "get"
+        assert fun._furnish.template == "/"
+        assert fun._furnish.headers == test_headers
