@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from furnish import furnish, get, post, headers, Path, Query, Body, Response
+from furnish import create, get, post, headers, Path, Query, Body, Response
 from typing import List
 
 
@@ -25,7 +25,6 @@ def test_headers():
 
 @pytest.fixture
 def api_cls(test_headers):
-    @furnish
     class Api:
 
         @get("/")
@@ -49,7 +48,7 @@ def api_cls(test_headers):
 
 @pytest.fixture(scope="function")
 def api(api_cls, client):
-    return api_cls("http://example.org", client=client)
+    return create(api_cls, "http://example.org", client=client)
 
 
 class TestCall:

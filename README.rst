@@ -7,8 +7,7 @@ Create HTTP API clients from Python. Inspired by Retrofit_.
 
     >>> import furnish
 
-    >>> @furnish.furnish
-    ... class FakeService:
+    >>> class FakeService:
     ... 
     ...     @furnish.get("/posts")
     ...     def all_posts(user_id: furnish.Query(Optional[int], "userId")=None): pass
@@ -34,7 +33,7 @@ Create HTTP API clients from Python. Inspired by Retrofit_.
     ...     def comments(post_id: furnish.Query(int, "postId")): pass
     ...
 
-    >>> service = FakeService("https://jsonplaceholder.typicode.com")
+    >>> service = furnish.create(FakeService, "https://jsonplaceholder.typicode.com")
 
     >>> service.all_posts(user_id=2).json()
     [{'userId': 2,
@@ -63,13 +62,12 @@ Supports simple deserialization of response bodies to Python objects:
     ...         self.userId = userId
     ... 
 
-    >>> @furnish.furnish
-    ... class FakeService:
+    >>> class FakeService:
     ...     @furnish.get("/posts/{id}")
     ...     def get_post(id: furnish.Path(int)) -> furnish.Response[Post]: pass
     ... 
 
-    >>> service = FakeService("https://jsonplaceholder.typicode.com")
+    >>> service = furnish.create(FakeService, "https://jsonplaceholder.typicode.com")
 
     >>> service.get_post(1).body()
     <__main__.Post object at 0x7f01ef00b208>

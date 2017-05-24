@@ -114,14 +114,13 @@ def _isfurnished(member):
     return inspect.isfunction(member) and hasattr(member, "_furnish")
 
 
-def furnish(cls: Optional[Type]=None, *,
-            base_cls: Type[BaseClient]=BaseClient) -> Type[BaseClient]:
+def create(cls: Optional[Type]=None,
+           *args,
+           base_cls: Type[BaseClient]=BaseClient,
+           **kwgs) -> Type[BaseClient]:
     """
     Create HTTP API client from class definition.
     """
-    if cls is None:
-        return partial(furnish, base_cls=base_cls)
-
     namespace = {}
     for name, member in inspect.getmembers(cls, _isfurnished):
         method, template, headers = member._furnish
@@ -140,7 +139,7 @@ def furnish(cls: Optional[Type]=None, *,
         namespace[name] = partialmethod(
             base_cls._call, signature, method, template, headers)
 
-    return type(cls.__name__, (base_cls,), namespace)
+    return type(cls.__name__, (base_cls,), namespace)(*args, **kwgs)
 
 
 _Marker = namedtuple("Marker", "method template headers")

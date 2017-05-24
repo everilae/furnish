@@ -1,6 +1,6 @@
 import pytest
 import furnish
-from furnish import url, get, post, headers, BaseClient, Body
+from furnish import create, url, get, post, headers, BaseClient, Body
 
 from furnish.exc import FurnishError
 
@@ -15,15 +15,14 @@ def test_headers():
 class TestDecorators:
 
     def test_simple_definition(self):
-        @furnish.furnish
         class Api:
             pass
 
-        assert issubclass(Api, BaseClient),\
-            "'furnish' produces 'furnish.BaseClient' subclasses"
+        api = create(Api, "")
+        assert isinstance(api, BaseClient),\
+            "'create' produces 'furnish.BaseClient' instances"
 
     def test_attributes(self):
-        @furnish.furnish
         class Api:
             @get("")
             def method1():
@@ -33,8 +32,9 @@ class TestDecorators:
             def method2():
                 pass
 
-        assert hasattr(Api, 'method1') and hasattr(Api, 'method1'),\
-            "'furnish' creates methods"
+        api = create(Api, "")
+        assert hasattr(api, 'method1') and hasattr(api, 'method1'),\
+            "furnish creates methods"
 
     def test_url(self):
         @url("get", "/items/{id}")
@@ -58,18 +58,20 @@ class TestDecorators:
     def test_validation(self):
         with pytest.raises(FurnishError,
                            message="Multiple Body parameters raise error"):
-            @furnish.furnish
             class Api:
                 @post("")
                 def create(body1: Body(dict), body2: Body(dict)): pass
 
+            create(Api, "")
+
         with pytest.raises(FurnishError,
                            message="Missing Path parameters raise error"):
-            @furnish.furnish
             class Api:
                 @get("/{network}/item/{id}/")
                 def get():
                     pass
+
+            create(Api, "")
 
     def test_headers(self, test_headers):
         @headers(test_headers)
