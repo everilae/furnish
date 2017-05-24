@@ -1,6 +1,9 @@
 import pytest
 from unittest import mock
-from furnish import create, get, post, headers, Path, Query, Body, Response
+
+from furnish import (
+    create, get, post, headers, Path, Query, Body, Header, Response)
+
 from typing import List
 
 
@@ -42,6 +45,13 @@ def api_cls(test_headers):
         @headers(test_headers)
         @get("/secret")
         def secret() -> Response: pass
+
+        @get("/super_secret")
+        def super_secret(auth: Header("Authorization")): pass
+
+        @headers(test_headers)
+        @get("/combo")
+        def combo(auth: Header("Authorization")): pass
 
     return Api
 
@@ -107,3 +117,14 @@ class TestCall:
         api.secret()
         client.assert_called_with("get", "http://example.org/secret",
                                   headers=test_headers)
+
+        api.super_secret("this is auth")
+        client.assert_called_with("get", "http://example.org/super_secret",
+                                  headers={ "Authorization": "this is auth" })
+
+        combined_headers = { "Authorization": "this is auth" }
+        combined_headers.update(test_headers)
+
+        api.combo("this is auth")
+        client.assert_called_with("get", "http://example.org/combo",
+                                  headers=combined_headers)

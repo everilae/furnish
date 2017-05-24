@@ -29,6 +29,18 @@ class Body(Parameter):
     Request body.
     """
 
+
+class Header(Parameter):
+    """
+    Request header.
+
+    Note the reversed parameters to `__init__`; a header always requires
+    a name, but usually will default to a `str`.
+    """
+
+    def __init__(self, name: str, type_: Type=str) -> None:
+        super().__init__(type_, name)
+
 JSON = Union[dict, list]
 T = TypeVar("T")
 

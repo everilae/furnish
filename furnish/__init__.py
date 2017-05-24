@@ -5,7 +5,7 @@ from collections import namedtuple
 from typing import Callable, Optional, Type, Mapping
 
 from .exc import FurnishError
-from .types import Path, Query, Body, Response
+from .types import Path, Query, Body, Header, Response
 from .utils import LockPick as _LockPick
 
 
@@ -42,6 +42,7 @@ def _get_args(type_, signature, bound):
 
 _path = partial(_get_args, Path)
 _query = partial(_get_args, Query)
+_headers = partial(_get_args, Header)
 
 
 def _body(signature, bound):
@@ -100,8 +101,12 @@ class BaseClient:
         if body:
             kwgs["data"] = body
 
+        combined_headers = _headers(signature, bound)
         if headers:
-            kwgs["headers"] = headers
+            combined_headers.update(headers)
+
+        if combined_headers:
+            kwgs["headers"] = combined_headers
 
         response = self.client(method, url, **kwgs)
 
@@ -114,7 +119,7 @@ def _isfurnished(member):
     return inspect.isfunction(member) and hasattr(member, "_furnish")
 
 
-def create(cls: Optional[Type]=None,
+def create(cls: Type,
            *args,
            base_cls: Type[BaseClient]=BaseClient,
            **kwgs) -> Type[BaseClient]:
