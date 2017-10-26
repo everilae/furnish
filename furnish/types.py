@@ -41,7 +41,7 @@ class Header(Parameter):
     def __init__(self, name: str, type_: Type=str) -> None:
         super().__init__(type_, name)
 
-JSON = Union[dict, list]
+JSON = Union[int, float, str, dict, list, bool, None]
 T = TypeVar("T")
 
 
@@ -70,7 +70,7 @@ class Response(Generic[T]):
 
     def __init__(self,
                  response: requests.Response,
-                 body_cls: Type[T]):
+                 body_cls: Optional[Type[T]]):
         self.response = response
         self.body_cls = body_cls
         self._entity = None
