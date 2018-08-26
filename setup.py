@@ -18,7 +18,7 @@ setup(
     tests_require=[ "pytest" ],
     install_requires=[
         "requests",
-        "backports.typing",
+        "typing",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
