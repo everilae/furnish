@@ -8,6 +8,8 @@ from .exc import FurnishError
 from .types import Path, Query, Body, Json, File, Header, Response
 from .utils import LockPick as _LockPick
 
+__version__ = '0.2.1'
+
 
 def _get_parameters(type_, signature):
     return ((name, parameter)
