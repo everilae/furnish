@@ -2,9 +2,12 @@ import pytest
 from unittest import mock
 
 from furnish import (
-    create, get, post, headers, Path, Query, Body, Header, Response)
+    create, get, post, headers, Path, Query, Body, Json, File, Header,
+    Response, FurnishError)
 
 from typing import List
+
+import requests
 
 
 class Item:
@@ -39,6 +42,9 @@ def api_cls(test_headers):
         @post("/")
         def create_item(item: Body(dict)) -> Response: pass
 
+        @post("/")
+        def create_item_json(item: Json()) -> Response: pass
+
         @get("/search")
         def search(q: Query(str)) -> Response[List[Item]]: pass
 
@@ -52,6 +58,9 @@ def api_cls(test_headers):
         @headers(test_headers)
         @get("/combo")
         def combo(auth: Header("Authorization")): pass
+
+        @post("/file")
+        def add_file(the_file: File()): pass
 
     return Api
 
@@ -70,14 +79,26 @@ class TestCall:
         api.item(1)
         client.assert_called_with("get", "http://example.org/1")
 
-        api.create_item({ "name": "Test" })
-        client.assert_called_with("post", "http://example.org/",
-                                  data={ "name": "Test" })
-
         ret = api.search("foo")
         client.assert_called_with("get", "http://example.org/search",
                                   params={ "q": "foo" })
         assert ret.response is client.return_value
+
+    def test_post(self, api, client):
+        api.create_item({ "name": "Test" })
+        client.assert_called_with("post", "http://example.org/",
+                                  data={ "name": "Test" })
+
+    def test_post_json(self, api, client):
+        api.create_item_json({ "name": "Test" })
+        client.assert_called_with("post", "http://example.org/",
+                                  json={ "name": "Test" })
+
+    def test_post_file(self, api, client):
+        mock_file = mock.Mock()
+        api.add_file(mock_file)
+        client.assert_called_with("post", "http://example.org/file",
+                                  files={ "the_file": mock_file })
 
     def test_body(self, api, client):
         the_json = { "foo": 1, "bar": 2 }
@@ -128,3 +149,12 @@ class TestCall:
         api.combo("this is auth")
         client.assert_called_with("get", "http://example.org/combo",
                                   headers=combined_headers)
+
+    def test_error_response_raises(self, api, client):
+        mock_response = mock.Mock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError()
+        client.return_value = mock_response
+        response = api.item(1)
+        with pytest.raises(FurnishError):
+            response.body()
+

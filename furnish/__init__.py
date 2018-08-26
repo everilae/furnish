@@ -5,7 +5,7 @@ from collections import namedtuple
 from typing import Callable, Optional, Type, Mapping
 
 from .exc import FurnishError
-from .types import Path, Query, Body, Header, Response
+from .types import Path, Query, Body, Json, File, Header, Response
 from .utils import LockPick as _LockPick
 
 
@@ -28,8 +28,10 @@ def _check_signature(signature, template):
         raise FurnishError(
             "missing Path parameters: {}".format(path_vars_diff))
 
-    if len(list(_get_parameters(Body, signature))) > 1:
-        raise FurnishError("multiple parameters annotated as Body")
+    for type_ in [Body, Json]:
+        if len(list(_get_parameters(type_, signature))) > 1:
+            raise FurnishError(
+                "multiple parameters annotated as {}".format(type_.__name__))
 
 
 def _get_args(type_, signature, bound):
@@ -40,19 +42,22 @@ def _get_args(type_, signature, bound):
 
     return v
 
-_path = partial(_get_args, Path)
-_query = partial(_get_args, Query)
-_headers = partial(_get_args, Header)
 
-
-def _body(signature, bound):
-    args = _get_args(Body, signature, bound)
+def _get_arg(type_, signature, bound):
+    args = _get_args(type_, signature, bound)
 
     if not args:
         return
 
-    body, = args.values()
-    return body
+    arg, = args.values()
+    return arg
+
+_path = partial(_get_args, Path)
+_query = partial(_get_args, Query)
+_headers = partial(_get_args, Header)
+_body = partial(_get_arg, Body)
+_json = partial(_get_arg, Json)
+_files = partial(_get_args, File)
 
 
 def _response_cls(signature):
@@ -61,6 +66,18 @@ def _response_cls(signature):
         return None
 
     return cls
+
+
+def _body_cls(response_cls):
+    body_cls = None
+    # Python 3.8 generics don't have __args__ unless specialized.
+    args = getattr(response_cls, "__args__", None)
+
+    if args:
+        body_cls = args[0]
+
+    return body_cls
+
 
 _default_client = requests.request
 
@@ -83,9 +100,10 @@ class BaseClient:
               method: str,
               template: str,
               headers: Optional[Mapping[str, str]],
+              response_cls: Optional[Type[Response]],
               *args, **kwgs) -> Response:
         """
-        Send an HTTP request using `_client`.
+        Send an HTTP request using `client`.
         """
         bound = signature.bind(*args, **kwgs)
         bound.apply_defaults()
@@ -101,6 +119,14 @@ class BaseClient:
         if body:
             kwgs["data"] = body
 
+        json_ = _json(signature, bound)
+        if json_:
+            kwgs["json"] = json_
+
+        files = _files(signature, bound)
+        if files:
+            kwgs["files"] = files
+
         combined_headers = _headers(signature, bound)
         if headers:
             combined_headers.update(headers)
@@ -110,8 +136,8 @@ class BaseClient:
 
         response = self.client(method, url, **kwgs)
 
-        response_cls = _response_cls(signature) or self.response_cls
-        body_cls, = response_cls.__args__ or (None,)
+        response_cls = response_cls or self.response_cls
+        body_cls = _body_cls(response_cls)
         return response_cls(response, body_cls)
 
 
@@ -141,8 +167,9 @@ def create(cls: Type,
         signature = inspect.signature(member)
         _check_signature(signature, template)
 
+        response_cls = _response_cls(signature)
         namespace[name] = partialmethod(
-            base_cls._call, signature, method, template, headers)
+            base_cls._call, signature, method, template, headers, response_cls)
 
     return type(cls.__name__, (base_cls,), namespace)(*args, **kwgs)
 

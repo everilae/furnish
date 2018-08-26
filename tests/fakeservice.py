@@ -10,6 +10,9 @@ class FakeService:
     @furnish.post("/posts")
     def create_post(post: furnish.Body(dict)): pass
 
+    @furnish.post("/posts")
+    def create_post_json(post: furnish.Json()): pass
+
     @furnish.get("/posts/{id}")
     def get_post(id: furnish.Path(int)): pass
 

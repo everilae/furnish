@@ -1,6 +1,6 @@
 import pytest
 import furnish
-from furnish import create, url, get, post, headers, BaseClient, Body
+from furnish import create, url, get, post, headers, BaseClient, Body, Json
 
 from furnish.exc import FurnishError
 
@@ -61,6 +61,14 @@ class TestDecorators:
             class Api:
                 @post("")
                 def create(body1: Body(dict), body2: Body(dict)): pass
+
+            create(Api, "")
+
+        with pytest.raises(FurnishError,
+                           message="Multiple Json parameters raise error"):
+            class Api:
+                @post("")
+                def create(body1: Json(dict), body2: Json(dict)): pass
 
             create(Api, "")
 
